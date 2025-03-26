@@ -1,5 +1,6 @@
 name: Build and Deploy Electron App
 
+# Updated workflow with cross-platform version detection
 on:
   push:
     branches:
@@ -52,9 +53,14 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Cross-platform version detection without container action
       - name: Get version
         id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
 
       - name: Update electron-builder.yml for macOS ARM64
         if: matrix.os == 'macos-14'
