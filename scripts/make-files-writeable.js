@@ -1,26 +1,13 @@
-/********************************************************************************
- * Copyright (C) 2025 EclipseSource and others.
- *
- * This program and the accompanying materials are made available under the
- * terms of the MIT License, which is available in the project root.
- *
- * SPDX-License-Identifier: MIT
- ********************************************************************************/
-
 /**
  * A simple script to make files writeable.
  * This helps with CI environments and plugins that need write permissions.
+ * JavaScript version for Windows compatibility.
  */
-import * as fs from 'fs';
-import * as path from 'path';
+const fs = require('fs');
+const path = require('path');
 
 // Get the directory from the command line arguments
-const directory = process.argv[2];
-
-if (!directory) {
-    console.error('Please provide a directory as an argument');
-    process.exit(1);
-}
+const directory = process.argv[2] || 'plugins';
 
 const dirPath = path.resolve(process.cwd(), directory);
 
@@ -31,7 +18,7 @@ if (!fs.existsSync(dirPath)) {
 }
 
 // Function to recursively make files writeable
-function makeWriteable(dir: string): void {
+function makeWriteable(dir) {
     try {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -40,7 +27,9 @@ function makeWriteable(dir: string): void {
             
             try {
                 // Make the file writeable (add user write permission)
-                fs.chmodSync(entryPath, fs.constants.S_IRUSR | fs.constants.S_IWUSR | fs.constants.S_IRGRP | fs.constants.S_IROTH);
+                const currentMode = fs.statSync(entryPath).mode;
+                // Add write permission (0o200 in octal)
+                fs.chmodSync(entryPath, currentMode | 0o200);
                 
                 if (entry.isDirectory()) {
                     makeWriteable(entryPath);
@@ -58,4 +47,4 @@ function makeWriteable(dir: string): void {
 
 console.log(`Making files in ${dirPath} writeable...`);
 makeWriteable(dirPath);
-console.log('Done making files writeable');
+console.log('Done making files writeable'); 

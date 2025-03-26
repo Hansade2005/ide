@@ -1,6 +1,6 @@
 name: Build and Deploy Electron App
 
-# Updated workflow for Windows and Mac only
+# Windows-only build workflow
 on:
   push:
     branches:
@@ -20,18 +20,8 @@ on:
 
 jobs:
   build:
-    name: Build Electron App (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2019, macos-13]
-        include:
-          - os: windows-2019
-            platform: win
-          - os: macos-13
-            platform: mac
-
+    name: Build Electron App (Windows)
+    runs-on: windows-2019
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -49,7 +39,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Cross-platform version detection without container action
       - name: Get version
         id: package-version
         shell: bash
@@ -60,7 +49,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          yarn --skip-integrity-check --network-timeout 100000
+          yarn --skip-integrity-check --network-timeout 300000
         env:
           NODE_OPTIONS: --max_old_space_size=4096
 
@@ -72,10 +61,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Plugins
+        shell: bash
+        continue-on-error: true
         run: |
-          yarn download:plugins
+          echo "Starting CI plugin download process..."
+          mkdir -p plugins
+          node scripts/ci-handle-plugins.js
+          echo "Plugin download process completed"
         env:
+          NODE_OPTIONS: --max_old_space_size=4096
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Make Plugins Writeable
+        continue-on-error: true
+        run: |
+          node scripts/make-files-writeable.js plugins
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
 
       - name: Package (Preview)
         if: github.event.inputs.build_type == 'preview' || !startsWith(github.ref, 'refs/tags/')
@@ -95,13 +97,9 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: optima-ide-${{ matrix.platform }}
+          name: optima-ide-win
           path: |
             applications/electron/dist/*.exe
-            applications/electron/dist/*.dmg
-            applications/electron/dist/*.zip
-            !applications/electron/dist/mac
-            !applications/electron/dist/mac-arm64
             !applications/electron/dist/win-unpacked
           retention-days: 7
 
@@ -125,7 +123,5 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/optima-ide-win/*.exe
-            artifacts/optima-ide-mac/*.dmg
-            artifacts/optima-ide-mac/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
