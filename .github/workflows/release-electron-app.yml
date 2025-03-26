@@ -51,6 +51,8 @@ jobs:
           sed -i 's|productName:.*|productName: Optima IDE|g' applications/electron/electron-builder.yml
 
       - name: Commit Version Changes
+        id: commit
+        continue-on-error: true
         run: |
           # Get the current branch name
           BRANCH_NAME=$(git symbolic-ref --short HEAD)
@@ -58,18 +60,37 @@ jobs:
           # Pull the latest changes with rebase
           git pull --rebase origin $BRANCH_NAME
           
-          # Add, commit and push changes
-          git add .
-          git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
-          git push origin $BRANCH_NAME
+          # Check if there are changes to commit
+          if ! git diff --quiet; then
+            # Add, commit and push changes
+            git add .
+            git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
+            git push origin $BRANCH_NAME
+            echo "changes_made=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes to commit. Version is already ${{ github.event.inputs.version }}"
+            echo "changes_made=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create Release Tag
         id: create_tag
         run: |
+          # Check if tag already exists
           TAG_NAME="v${{ github.event.inputs.version }}"
           if [[ "${{ github.event.inputs.release_type }}" != "stable" ]]; then
             TAG_NAME="v${{ github.event.inputs.version }}-${{ github.event.inputs.release_type }}"
           fi
+          
+          # Check if tag exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists. Deleting and recreating."
+            # If running locally, delete the tag
+            git tag -d $TAG_NAME || true
+            # Delete the remote tag if it exists
+            git push origin :refs/tags/$TAG_NAME || true
+          fi
+          
+          # Create and push tag
           git tag $TAG_NAME
           git push origin $TAG_NAME
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
