@@ -1,0 +1,141 @@
+name: Build and Deploy Electron App
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - release
+
+jobs:
+  build:
+    name: Build Electron App (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2019, ubuntu-22.04, macos-13, macos-14]
+        include:
+          - os: windows-2019
+            platform: win
+          - os: ubuntu-22.04
+            platform: linux
+          - os: macos-13
+            platform: mac-x64
+          - os: macos-14
+            platform: mac-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Get version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Update electron-builder.yml for macOS ARM64
+        if: matrix.os == 'macos-14'
+        run: |
+          sed -i '' 's|https://download.eclipse.org/theia/ide/latest/macos|https://download.eclipse.org/theia/ide/latest/macos-arm|g' applications/electron/electron-builder.yml
+
+      - name: Install Dependencies
+        run: |
+          yarn --skip-integrity-check --network-timeout 100000
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+
+      - name: Build
+        run: |
+          yarn build
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Plugins
+        run: |
+          yarn download:plugins
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (Preview)
+        if: github.event.inputs.build_type == 'preview' || !startsWith(github.ref, 'refs/tags/')
+        run: |
+          yarn package:applications:preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (Release)
+        if: github.event.inputs.build_type == 'release' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          yarn package:applications
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: optima-ide-${{ matrix.platform }}
+          path: |
+            applications/electron/dist/*.exe
+            applications/electron/dist/*.AppImage
+            applications/electron/dist/*.deb
+            applications/electron/dist/*.dmg
+            applications/electron/dist/*.zip
+            !applications/electron/dist/mac
+            !applications/electron/dist/mac-arm64
+            !applications/electron/dist/linux-unpacked
+            !applications/electron/dist/win-unpacked
+          retention-days: 7
+
+  create-release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.build_type == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Optima IDE ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name || format('v{0}', github.run_number) }}
+          draft: ${{ github.event.inputs.build_type != 'release' }}
+          prerelease: ${{ github.event.inputs.build_type != 'release' }}
+          generate_release_notes: true
+          files: |
+            artifacts/optima-ide-win/*.exe
+            artifacts/optima-ide-linux/*.AppImage
+            artifacts/optima-ide-linux/*.deb
+            artifacts/optima-ide-mac-x64/*.dmg
+            artifacts/optima-ide-mac-x64/*.zip
+            artifacts/optima-ide-mac-arm64/*.dmg
+            artifacts/optima-ide-mac-arm64/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

@@ -1,0 +1,60 @@
+appId: com.hanstech.optima-ide
+productName: Optima IDE
+copyright: Copyright © 2024 HansTech.inc
+electronVersion: 25.9.8
+
+directories:
+  buildResources: resources
+  output: dist
+
+files:
+  - package.json
+  - lib
+  - src-gen
+  - resources
+  - "!**/*.vsix"
+  - "!**/*.map"
+
+extraResources:
+  - from: plugins
+    to: app/plugins
+  - from: resources/icons
+    to: icons
+
+win:
+  target:
+    - nsis
+    - zip
+  icon: resources/icons/WindowsIcon.ico
+  publisherName: HansTech.inc
+  fileAssociations:
+    - ext: [js, json, ts, html, css, md]
+      icon: resources/icons/WindowsIcon.ico
+
+mac:
+  target:
+    - dmg
+  icon: resources/icons/MacIcon.icns
+  category: public.app-category.developer-tools
+  darkModeSupport: true
+
+linux:
+  target:
+    - deb
+    - AppImage
+  icon: resources/icons/LinuxIcon.png
+  category: Development
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  license: LICENSE
+  installerIcon: resources/icons/WindowsIcon.ico
+  uninstallerIcon: resources/icons/WindowsIcon.ico
+  installerHeaderIcon: resources/icons/WindowsIcon.ico
+  menuCategory: Development
+
+publish:
+  provider: github
+  owner: Hansade2005
+  repo: theia-ide 

@@ -1,0 +1,83 @@
+name: Release Electron App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+
+jobs:
+  create-release-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+
+      - name: Update Version in package.json
+        run: |
+          yarn version --new-version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Update Version in applications/electron/package.json
+        run: |
+          cd applications/electron
+          yarn version --new-version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Update electron-builder.yml
+        run: |
+          sed -i 's|productName:.*|productName: Optima IDE|g' applications/electron/electron-builder.yml
+
+      - name: Commit Version Changes
+        run: |
+          git add .
+          git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
+          git push
+
+      - name: Create Release Tag
+        id: create_tag
+        run: |
+          TAG_NAME="v${{ github.event.inputs.version }}"
+          if [[ "${{ github.event.inputs.release_type }}" != "stable" ]]; then
+            TAG_NAME="v${{ github.event.inputs.version }}-${{ github.event.inputs.release_type }}"
+          fi
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.tag_name }}
+
+  trigger-build:
+    needs: create-release-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Build Workflow
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Build and Deploy Electron App
+          ref: ${{ needs.create-release-tag.outputs.tag_name }}
+          inputs: '{"build_type": "release"}'
+          token: ${{ secrets.GITHUB_TOKEN }} 

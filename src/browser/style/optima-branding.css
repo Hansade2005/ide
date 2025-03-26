@@ -1,0 +1,131 @@
+/* Transform Roo-cline to Optima branding */
+.roo-cline-container,
+[class*="roo-cline"],
+[id*="roo-cline"] {
+    background-color: var(--theia-editor-background);
+}
+
+/* Rename classes dynamically */
+.roo-cline-container {
+    class: optima-ai-container !important;
+}
+
+/* Right sidebar styling */
+.theia-sidebar.right {
+    min-width: 300px;
+    width: 300px;
+    transition: transform 0.2s ease-in-out;
+    background-color: var(--theia-editor-background);
+}
+
+/* Handle sidebar collapse/expand */
+.theia-sidebar.right.collapsed {
+    transform: translateX(100%);
+}
+
+.theia-sidebar.right:not(.collapsed) {
+    transform: translateX(0);
+}
+
+/* Toggle button styling */
+.p-TabBar[data-orientation='horizontal'][area='right'] .theia-tabBar-tab {
+    transition: background-color 0.2s;
+}
+
+.optima-ai-icon {
+    background-image: url('../../resources/icons/optima-ai.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+/* Override all Roo branding elements */
+.roo-cline-title,
+.roo-cline-header,
+[class*="roo-cline-"],
+[id*="roo-cline-"] {
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Replace text content */
+.roo-cline-title::before,
+[class*="roo-cline-title"]::before {
+    content: 'Optima AI Assistant' !important;
+}
+
+.roo-cline-header::before,
+[class*="roo-cline-header"]::before {
+    content: 'Optima AI' !important;
+}
+
+/* Hide all original Roo branding */
+.roo-cline-branding,
+[class*="roo-"],
+[id*="roo-"] {
+    display: none !important;
+}
+
+/* Show Optima branding */
+.optima-ai-container,
+[class*="optima-"],
+[id*="optima-"] {
+    display: block !important;
+}
+
+/* Custom styling for the secondary sidebar */
+.theia-sidebar.secondary {
+    min-width: 300px;
+    background-color: var(--theia-editor-background);
+}
+
+/* Override any Roo text in the UI */
+*::before {
+    content: attr(data-content);
+}
+
+[data-content*="Roo"]:before {
+    content: attr(data-content) !important;
+    text-transform: capitalize;
+}
+
+/* Replace Roo text in tooltips */
+[title*="Roo"] {
+    title: attr(title).replace(/Roo[- ]?[Cc]line|Roo[- ]?[Cc]ode/g, 'Optima AI');
+}
+
+/* Custom Optima theme colors */
+:root {
+    --optima-primary: #2B5BA1;
+    --optima-secondary: #1E3F71;
+    --optima-accent: #4A90E2;
+}
+
+/* Apply Optima theme to extension elements */
+.optima-ai-container,
+.optima-ai-widget {
+    border-color: var(--optima-primary);
+    color: var(--theia-foreground);
+}
+
+/* Extension header styling */
+.optima-ai-header {
+    background-color: var(--optima-primary);
+    color: white;
+    padding: 8px 12px;
+    font-weight: 500;
+}
+
+/* Ensure smooth transitions */
+.theia-app-sides {
+    .right {
+        transition: width 0.2s ease-in-out;
+    }
+}
+
+/* Responsive sidebar */
+@media (max-width: 900px) {
+    .theia-sidebar.right {
+        min-width: 250px;
+        width: 250px;
+    }
+} 
