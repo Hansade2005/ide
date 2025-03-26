@@ -3,7 +3,7 @@
   "name": "theia-ide-electron-app",
   "description": "Eclipse Theia IDE product",
   "productName": "Theia IDE",
-  "version": "1.60.0",
+  "version": "1.0.0",
   "main": "scripts/theia-electron-main.js",
   "license": "MIT",
   "author": "Eclipse Theia <theia-dev@eclipse.org>",
